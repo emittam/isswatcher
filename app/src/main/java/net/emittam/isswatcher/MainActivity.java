@@ -3,6 +3,7 @@ package net.emittam.isswatcher;
 import android.annotation.SuppressLint;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 
@@ -12,6 +13,8 @@ import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import net.emittam.isswatcher.utils.ISSPositionManager;
+
+import java.util.List;
 
 
 public class MainActivity extends ActionBarActivity {
@@ -46,7 +49,6 @@ public class MainActivity extends ActionBarActivity {
         // GoogleMapが使用不可のときのためにtry catchで囲っています。
         catch (Exception e) {
         }
-        ISSPositionManager.getInstance(this).updatePositionData();
     }
 
     // 地図の初期設定メソッド
@@ -58,12 +60,21 @@ public class MainActivity extends ActionBarActivity {
         // 現在位置ボタンの表示を行なう
         googleMap.setMyLocationEnabled(true);
 
-        // めがね会館の位置、ズーム設定
-        CameraPosition camerapos = new CameraPosition.Builder()
-                .target(new LatLng(35.942756,136.198842)).zoom(15.5f).build();
+        ISSPositionManager.getInstance(this).updatePositionData(new ISSPositionManager.UpdateFinishListener() {
+            @Override
+            public void onUpdateFinished(List<ISSPositionManager.Position> updatedPositionList) {
+                Log.w("debug", ISSPositionManager.getInstance(MainActivity.this).nowPosition().toString());
+                ISSPositionManager.Position p = ISSPositionManager.getInstance(MainActivity.this).nowPosition();
+                // めがね会館の位置、ズーム設定
+                CameraPosition camerapos = new CameraPosition.Builder()
+                        .target(new LatLng(p.lat,p.lng)).zoom(1.5f).build();
 
-        // 地図の中心の変更する
-        googleMap.moveCamera(CameraUpdateFactory.newCameraPosition(camerapos));
+                // 地図の中心の変更する
+                googleMap.moveCamera(CameraUpdateFactory.newCameraPosition(camerapos));
+
+            }
+        });
+
     }
 
     @Override
