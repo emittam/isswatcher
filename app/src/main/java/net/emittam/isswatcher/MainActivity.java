@@ -11,6 +11,7 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
+import net.emittam.isswatcher.utils.ISSPositionManager;
 
 
 public class MainActivity extends ActionBarActivity {
@@ -45,6 +46,7 @@ public class MainActivity extends ActionBarActivity {
         // GoogleMapが使用不可のときのためにtry catchで囲っています。
         catch (Exception e) {
         }
+        ISSPositionManager.getInstance(this).updatePositionData();
     }
 
     // 地図の初期設定メソッド
