@@ -6,19 +6,14 @@ import android.util.Log;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
-import java.util.TimeZone;
 
 /**
  * Created by emittam on 15/04/12.
@@ -27,41 +22,30 @@ public final class ISSPositionManager {
 
     private static ISSPositionManager INSTANCE = null;
 
-    private List<Position> mPositions;
-
     private RequestQueue mRequestQueue;
 
+    private Position mPosition;
+
     private ISSPositionManager(Context context) {
-        this.mPositions = new ArrayList();
         this.mRequestQueue = Volley.newRequestQueue(context.getApplicationContext());
         this.mRequestQueue.start();
     }
 
-    private static final String POSITION_API_URL = "http://tsujimotter.info/api/SateliteTracker/orbitjsonp.cgi?callback=jsonp";
+    private static final String POSITION_API_URL = "http://api.open-notify.org/iss-now.json";
 
-    public void updatePositionData(final UpdateFinishListener updateFinishListener) {
+    public void updatePositionData(final UpdatePositionFinishListener updatePositionFinishListener) {
         mRequestQueue.add(new StringRequest(POSITION_API_URL,new Response.Listener<String>() {
             @Override
             public void onResponse(String response) {
-                String json = response.substring("jsonp(".length(), response.length() - 1);
                 try {
-                    JSONObject jsonObject = new JSONObject(json);
-                    JSONArray positionArray = jsonObject.getJSONArray("orbits");
-                    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                    dateFormat.setTimeZone(TimeZone.getTimeZone("JST"));
-                    mPositions.clear();
-                    for (int i = 0; i < positionArray.length(); i++) {
-                        JSONObject positionObject = positionArray.getJSONObject(i);
-                        double lat = positionObject.getDouble("latitude");
-                        double lng = positionObject.getDouble("longitude");
-                        Date date = dateFormat.parse(positionObject.getString("date"));
-                        Position p = new Position(date, lat, lng);
-                        mPositions.add(p);
-                    }
-                    updateFinishListener.onUpdateFinished(mPositions);
+                    JSONObject jsonObject = new JSONObject(response);
+                    Log.w("debug", jsonObject.toString());
+                    double lat = jsonObject.getJSONObject("iss_position").getDouble("latitude");
+                    double lng = jsonObject.getJSONObject("iss_position").getDouble("longitude");
+                    Date date = new Date(jsonObject.getLong("timestamp"));
+                    mPosition = new Position(date, lat, lng);
+                    updatePositionFinishListener.onUpdateFinished(mPosition);
                 } catch (JSONException e) {
-                    Log.e("error", "error " + e);
-                } catch (ParseException e) {
                     Log.e("error", "error " + e);
                 }
             }
@@ -71,17 +55,32 @@ public final class ISSPositionManager {
                 Log.w("ISSWacher", "error " + error.toString());
             }
         }));
+    }
 
+    private static final String PASS_TIME_API_URL = "http://api.open-notify.org/iss-pass.json?lat=%s&lon=%s";
+
+    public void updatePassTime(double lat, double lng , final UpdatePassDateFinishListener listener) {
+        mRequestQueue.add(new JsonObjectRequest(String.format(PASS_TIME_API_URL, lat, lng), null, new Response.Listener<JSONObject>() {
+            @Override
+            public void onResponse(JSONObject response) {
+                try {
+                    long time = response.getJSONArray("response").getJSONObject(0).getLong("risetime");
+                    Date date = new Date(time);
+                    listener.onUpdateFinished(date);
+                } catch (JSONException e) {
+                    Log.e("error", "jsonExecption : " + e.toString());
+                }
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+
+            }
+        }));
     }
 
     public Position nowPosition() {
-        Date now = new Date();
-        for (final Position p : mPositions) {
-            if (p.date.after(now)) {
-                return p;
-            }
-        }
-        return null;
+        return mPosition;
     }
 
     public static synchronized ISSPositionManager getInstance(Context context) {
@@ -113,7 +112,11 @@ public final class ISSPositionManager {
         }
     }
 
-    public interface UpdateFinishListener {
-        public void onUpdateFinished(List<Position> updatedPositionList);
+    public interface UpdatePositionFinishListener {
+        public void onUpdateFinished(Position updatedPosition);
+    }
+
+    public interface  UpdatePassDateFinishListener {
+        public void  onUpdateFinished(Date date);
     }
 }

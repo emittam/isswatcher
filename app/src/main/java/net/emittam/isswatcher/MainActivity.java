@@ -1,7 +1,11 @@
 package net.emittam.isswatcher;
 
 import android.annotation.SuppressLint;
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+import android.content.Intent;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
 import android.view.Menu;
@@ -12,17 +16,24 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import net.emittam.isswatcher.utils.ISSPositionManager;
 
-import java.util.List;
+import java.util.Date;
+import java.util.Timer;
+import java.util.TimerTask;
 
 
 public class MainActivity extends ActionBarActivity {
 
     // GoogleMapオブジェクトの宣言
     private GoogleMap googleMap;
+
+    private Timer mTimer;
+
+    private Marker mMarker;
 
     @SuppressLint("NewApi")
     @Override
@@ -51,6 +62,52 @@ public class MainActivity extends ActionBarActivity {
         // GoogleMapが使用不可のときのためにtry catchで囲っています。
         catch (Exception e) {
         }
+
+        ISSPositionManager.getInstance(this).updatePassTime(35.57, 136.11, new ISSPositionManager.UpdatePassDateFinishListener() {
+            @Override
+            public void onUpdateFinished(Date date) {
+                Log.d("debug", "pass : " + date.toString());
+                Intent intent = new Intent(MainActivity.this, PushBroadcastReceiver.class);
+                PendingIntent sender = PendingIntent.getBroadcast(MainActivity.this, 0, intent, 0);
+                AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
+                am.setRepeating(AlarmManager.RTC_WAKEUP, date.getTime(), 0, sender);
+            }
+        });
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        mTimer.cancel();
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        ISSPositionManager.getInstance(this).updatePositionData(new ISSPositionManager.UpdatePositionFinishListener() {
+            @Override
+            public void onUpdateFinished(ISSPositionManager.Position updatedPosition) {
+                CameraPosition camerapos = new CameraPosition.Builder()
+                        .target(new LatLng(updatedPosition.lat, updatedPosition.lng)).zoom(2.5f).build();
+
+                // 地図の中心の変更する
+                googleMap.moveCamera(CameraUpdateFactory.newCameraPosition(camerapos));
+                mTimer = new Timer();
+                mTimer.schedule(new TimerTask() {
+                    @Override
+                    public void run() {
+                        ISSPositionManager.getInstance(MainActivity.this).updatePositionData(new ISSPositionManager.UpdatePositionFinishListener() {
+                            @Override
+                            public void onUpdateFinished(ISSPositionManager.Position updatedPosition) {
+                                mMarker.setPosition(new LatLng(updatedPosition.lat, updatedPosition.lng));
+                            }
+                        });
+
+                    }
+                }, 0, 5000);
+            }
+
+        });
     }
 
     // 地図の初期設定メソッド
@@ -62,24 +119,10 @@ public class MainActivity extends ActionBarActivity {
         // 現在位置ボタンの表示を行なう
         googleMap.setMyLocationEnabled(true);
 
-        ISSPositionManager.getInstance(this).updatePositionData(new ISSPositionManager.UpdateFinishListener() {
-            @Override
-            public void onUpdateFinished(List<ISSPositionManager.Position> updatedPositionList) {
-                Log.w("debug", ISSPositionManager.getInstance(MainActivity.this).nowPosition().toString());
-                ISSPositionManager.Position p = ISSPositionManager.getInstance(MainActivity.this).nowPosition();
-                // めがね会館の位置、ズーム設定
-                CameraPosition camerapos = new CameraPosition.Builder()
-                        .target(new LatLng(p.lat,p.lng)).zoom(1.5f).build();
-
-                // 地図の中心の変更する
-                googleMap.moveCamera(CameraUpdateFactory.newCameraPosition(camerapos));
-                //マーカー
-                MarkerOptions options = new MarkerOptions();
-                options.position(new LatLng(p.lat,p.lng));
-                googleMap.addMarker(options);
-            }
-        });
-
+        //マーカー
+        MarkerOptions options = new MarkerOptions();
+        options.position(new LatLng(0, 0));
+        this.mMarker = googleMap.addMarker(options);
     }
 
     @Override
