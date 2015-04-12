@@ -1,14 +1,11 @@
 package net.emittam.isswatcher.utils;
 
-import android.app.Application;
 import android.content.Context;
 import android.util.Log;
 
-import com.android.volley.Cache;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
-import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 
@@ -22,7 +19,6 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.TimeZone;
-import java.util.logging.Logger;
 
 /**
  * Created by emittam on 15/04/12.
@@ -36,7 +32,7 @@ public final class ISSPositionManager {
     private RequestQueue mRequestQueue;
 
     private ISSPositionManager(Context context) {
-        this.mPositions = new ArrayList<>();
+        this.mPositions = new ArrayList();
         this.mRequestQueue = Volley.newRequestQueue(context.getApplicationContext());
         this.mRequestQueue.start();
     }

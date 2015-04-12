@@ -12,6 +12,8 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
+
 import net.emittam.isswatcher.utils.ISSPositionManager;
 
 import java.util.List;
@@ -71,7 +73,10 @@ public class MainActivity extends ActionBarActivity {
 
                 // 地図の中心の変更する
                 googleMap.moveCamera(CameraUpdateFactory.newCameraPosition(camerapos));
-
+                //マーカー
+                MarkerOptions options = new MarkerOptions();
+                options.position(new LatLng(p.lat,p.lng));
+                googleMap.addMarker(options);
             }
         });
 

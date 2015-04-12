@@ -46,6 +46,8 @@
         <meta-data
             android:name="com.google.android.maps.v2.API_KEY"
             android:value="AIzaSyAYMaKvzWgHbhKgHN0l5YCfThrkOuPY98I" />
+        <!-- サービスを登録する -->
+        <service android:name=".mapService" />
     </application>
 
 
